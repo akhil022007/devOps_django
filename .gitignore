@@ -1,0 +1,37 @@
+# .gitignore
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+eggs/
+*.egg
+*.egg-info/
+
+# Virtual environment
+venv/
+env/
+.env/
+
+# Django stuff:
+*.log
+*.pot
+*.mo
+*.sqlite3 # Your SQLite database file
+media/ # User-uploaded media files (if you set up MEDIA_ROOT)
+
+# IDE-specific files (e.g., VS Code)
+.vscode/
+
+# Operating System files
+.DS_Store
+Thumbs.db
