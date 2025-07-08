@@ -10,7 +10,6 @@ services:
       POSTGRES_USER: ${DB_USER:-mydjangoappuser}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-mydjangoapppassword}
     volumes:
-      # This links the named volume 'db_data' to the container path
       - db_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
@@ -25,6 +24,8 @@ services:
     container_name: mydjango_web
     command: >
       sh -c "
+      # Decode the Base64 secret key and export it
+      export DJANGO_SECRET_KEY=$(echo ${DJANGO_SECRET_KEY_B64} | base64 -d) &&
       /usr/local/bin/python /app/manage.py wait_for_db &&
       /usr/local/bin/python /app/manage.py migrate --noinput &&
       /usr/local/bin/python /app/manage.py collectstatic --noinput &&
@@ -35,7 +36,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      # We now pass the Base64 encoded key to the container
+      DJANGO_SECRET_KEY_B64: ${DJANGO_SECRET_KEY_B64}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
       DB_NAME: ${DB_NAME:-mydjangoappdb}
       DB_USER: ${DB_USER:-mydjangoappuser}
@@ -52,7 +54,5 @@ services:
       retries: 5
       start_period: 20s
 
-# This section defines the named volumes used by your services
 volumes:
-  db_data: # This is the definition of the 'db_data' named volume
-
+  db_data:
