@@ -2,8 +2,9 @@ pipeline {
     agent any
 
     environment {
-        // This variable is a placeholder. The actual DJANGO_SECRET_KEY value
-        // will be injected securely from the Jenkins Secret Text Credential.
+        // These variables are defined at the pipeline level.
+        // DJANGO_SECRET_KEY_PLACEHOLDER is just a semantic placeholder here;
+        // its actual value is injected by 'withCredentials' later.
         DJANGO_SECRET_KEY_PLACEHOLDER = 'PLACEHOLDER_FOR_JENKINS_CREDENTIAL_VALUE'
 
         DB_NAME = 'mydjangoappdb'
@@ -27,17 +28,27 @@ pipeline {
                 echo 'Building Docker images...'
                 // Use withCredentials to securely inject the SECRET_KEY from Jenkins Credentials
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
-                    script {
-                        // Pass environment variables using the 'env' parameter of the 'sh' step.
-                        // Jenkins handles the correct quoting and escaping for the shell.
-                        sh(script: 'docker-compose build web', env: [
-                            DJANGO_SECRET_KEY: DJANGO_SECRET_KEY_VAR, // Value comes from Jenkins Credential
-                            DB_NAME: env.DB_NAME,
-                            DB_USER: env.DB_USER,
-                            DB_PASSWORD: env.DB_PASSWORD,
-                            DJANGO_ALLOWED_HOSTS: env.DJANGO_ALLOWED_HOSTS,
-                            DJANGO_DEBUG: env.DJANGO_DEBUG
-                        ])
+                    // Use withEnv to make the variables available as environment variables for the 'sh' step
+                    withEnv([
+                        "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY_VAR}", // This injects the credential value into the environment
+                        "DB_NAME=${env.DB_NAME}",
+                        "DB_USER=${env.DB_USER}",
+                        "DB_PASSWORD=${env.DB_PASSWORD}",
+                        "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
+                        "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
+                    ]) {
+                        // The 'sh' step will now execute in an environment where these variables are set.
+                        // We still use 'export' within the shell script to ensure they are available
+                        // to docker-compose and its sub-processes, correctly quoted.
+                        sh """
+                        export DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}"
+                        export DB_NAME="${DB_NAME}"
+                        export DB_USER="${DB_USER}"
+                        export DB_PASSWORD="${DB_PASSWORD}"
+                        export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
+                        export DJANGO_DEBUG="${DJANGO_DEBUG}"
+                        docker-compose build web
+                        """
                     }
                 }
             }
@@ -47,15 +58,23 @@ pipeline {
             steps {
                 echo 'Bringing up application services with Docker Compose...'
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
-                    script {
-                        sh(script: 'docker-compose up -d', env: [
-                            DJANGO_SECRET_KEY: DJANGO_SECRET_KEY_VAR,
-                            DB_NAME: env.DB_NAME,
-                            DB_USER: env.DB_USER,
-                            DB_PASSWORD: env.DB_PASSWORD,
-                            DJANGO_ALLOWED_HOSTS: env.DJANGO_ALLOWED_HOSTS,
-                            DJANGO_DEBUG: env.DJANGO_DEBUG
-                        ])
+                    withEnv([
+                        "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY_VAR}",
+                        "DB_NAME=${env.DB_NAME}",
+                        "DB_USER=${env.DB_USER}",
+                        "DB_PASSWORD=${env.DB_PASSWORD}",
+                        "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
+                        "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
+                    ]) {
+                        sh """
+                        export DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}"
+                        export DB_NAME="${DB_NAME}"
+                        export DB_USER="${DB_USER}"
+                        export DB_PASSWORD="${DB_PASSWORD}"
+                        export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
+                        export DJANGO_DEBUG="${DJANGO_DEBUG}"
+                        docker-compose up -d
+                        """
                     }
                 }
 
@@ -64,33 +83,53 @@ pipeline {
 
                 echo 'Running Django migrations...'
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
-                    script {
-                        sh(script: '/usr/local/bin/python manage.py migrate --noinput', env: [
-                            DJANGO_SECRET_KEY: DJANGO_SECRET_KEY_VAR,
-                            DB_NAME: env.DB_NAME,
-                            DB_USER: env.DB_USER,
-                            DB_PASSWORD: env.DB_PASSWORD,
-                            DB_HOST: 'db',    // Explicitly set DB_HOST for exec commands
-                            DB_PORT: '5432',  // Explicitly set DB_PORT for exec commands
-                            DJANGO_ALLOWED_HOSTS: env.DJANGO_ALLOWED_HOSTS,
-                            DJANGO_DEBUG: env.DJANGO_DEBUG
-                        ])
+                    withEnv([
+                        "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY_VAR}",
+                        "DB_NAME=${env.DB_NAME}",
+                        "DB_USER=${env.DB_USER}",
+                        "DB_PASSWORD=${env.DB_PASSWORD}",
+                        "DB_HOST=db",    // Explicitly set DB_HOST for exec commands
+                        "DB_PORT=5432",  // Explicitly set DB_PORT for exec commands
+                        "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
+                        "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
+                    ]) {
+                        sh """
+                        export DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}"
+                        export DB_NAME="${DB_NAME}"
+                        export DB_USER="${DB_USER}"
+                        export DB_PASSWORD="${DB_PASSWORD}"
+                        export DB_HOST="${DB_HOST}"
+                        export DB_PORT="${DB_PORT}"
+                        export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
+                        export DJANGO_DEBUG="${DJANGO_DEBUG}"
+                        docker-compose exec web /usr/local/bin/python manage.py migrate --noinput
+                        """
                     }
                 }
 
                 echo 'Collecting static files...'
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
-                    script {
-                        sh(script: '/usr/local/bin/python manage.py collectstatic --noinput', env: [
-                            DJANGO_SECRET_KEY: DJANGO_SECRET_KEY_VAR,
-                            DB_NAME: env.DB_NAME,
-                            DB_USER: env.DB_USER,
-                            DB_PASSWORD: env.DB_PASSWORD,
-                            DB_HOST: 'db',
-                            DB_PORT: '5432',
-                            DJANGO_ALLOWED_HOSTS: env.DJANGO_ALLOWED_HOSTS,
-                            DJANGO_DEBUG: env.DJANGO_DEBUG
-                        ])
+                    withEnv([
+                        "DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY_VAR}",
+                        "DB_NAME=${env.DB_NAME}",
+                        "DB_USER=${env.DB_USER}",
+                        "DB_PASSWORD=${env.DB_PASSWORD}",
+                        "DB_HOST=db",
+                        "DB_PORT=5432",
+                        "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
+                        "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
+                    ]) {
+                        sh """
+                        export DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}"
+                        export DB_NAME="${DB_NAME}"
+                        export DB_USER="${DB_USER}"
+                        export DB_PASSWORD="${DB_PASSWORD}"
+                        export DB_HOST="${DB_HOST}"
+                        export DB_PORT="${DB_PORT}"
+                        export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
+                        export DJANGO_DEBUG="${DJANGO_DEBUG}"
+                        docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput
+                        """
                     }
                 }
 
