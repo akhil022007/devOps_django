@@ -10,6 +10,7 @@ services:
       POSTGRES_USER: ${DB_USER:-mydjangoappuser}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-mydjangoapppassword}
     volumes:
+      # This links the named volume 'db_data' to the container path
       - db_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
@@ -44,10 +45,14 @@ services:
       DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
     depends_on:
       - db
-    healthcheck: # NEW: Healthcheck for the web service
-      test: ["CMD", "curl", "-f", "http://localhost:8000"] # Checks if Django responds to HTTP requests
-      interval: 10s # Check every 10 seconds
-      timeout: 5s   # Timeout after 5 seconds
-      retries: 5    # Retry 5 times before marking as unhealthy
-      start_period: 20s # Give the app 20 seconds to start before health checks begin
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+# This section defines the named volumes used by your services
+volumes:
+  db_data: # This is the definition of the 'db_data' named volume
 
