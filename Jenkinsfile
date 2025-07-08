@@ -2,13 +2,14 @@ pipeline {
     agent any
 
     environment {
-        // This is your actual, securely generated Django SECRET_KEY.
-        // The triple quotes ensure Groovy handles it correctly.
-        DJANGO_SECRET_KEY = '''1v3#rts0=9v*8hrrg1#$b7ai8%05(hil_(&r)f3gvvtac$)!4p'''
+        // These variables will be populated by the Jenkins credential or directly.
+        // They are kept here for clarity of what env vars are expected.
+        // The actual DJANGO_SECRET_KEY value will come from the Jenkins Secret Text Credential.
+        DJANGO_SECRET_KEY_PLACEHOLDER = 'PLACEHOLDER_FOR_JENKINS_CREDENTIAL_VALUE' // This is just a placeholder
         DB_NAME = 'mydjangoappdb'
         DB_USER = 'mydjangoappuser'
         DB_PASSWORD = 'mydjangoapppassword'
-        DJANGO_ALLOWED_HOSTS = 'localhost,127.0.0.1'
+        DJANGO_ALLOWED_HOSTS = 'localhost,127.0.0.1' // Update if external IP is needed
         DJANGO_DEBUG = 'False'
     }
 
@@ -24,16 +25,23 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 echo 'Building Docker images...'
-                withEnv([
-                    // Pass environment variables with single quotes to prevent shell interpretation of special characters
-                    "DJANGO_SECRET_KEY='${env.DJANGO_SECRET_KEY}'",
-                    "DB_NAME='${env.DB_NAME}'",
-                    "DB_USER='${env.DB_USER}'",
-                    "DB_PASSWORD='${env.DB_PASSWORD}'",
-                    "DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}'",
-                    "DJANGO_DEBUG='${env.DJANGO_DEBUG}'"
-                ]) {
-                    sh 'docker-compose build web'
+                // Use withCredentials to securely inject the SECRET_KEY
+                withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
+                    script {
+                        // Pass environment variables directly to docker-compose build using --build-arg or --env
+                        // For build, --build-arg is preferred if the Dockerfile uses ARG.
+                        // If Dockerfile uses ENV, then passing via --env is needed for the build context.
+                        // Let's pass them as explicit env vars for the shell running docker-compose.
+                        sh """
+                        DJANGO_SECRET_KEY='${DJANGO_SECRET_KEY_VAR}' \\
+                        DB_NAME='${env.DB_NAME}' \\
+                        DB_USER='${env.DB_USER}' \\
+                        DB_PASSWORD='${env.DB_PASSWORD}' \\
+                        DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}' \\
+                        DJANGO_DEBUG='${env.DJANGO_DEBUG}' \\
+                        docker-compose build web
+                        """
+                    }
                 }
             }
         }
@@ -41,46 +49,54 @@ pipeline {
         stage('Deploy Application') {
             steps {
                 echo 'Bringing up application services with Docker Compose...'
-                withEnv([
-                    // Pass environment variables with single quotes to prevent shell interpretation of special characters
-                    "DJANGO_SECRET_KEY='${env.DJANGO_SECRET_KEY}'",
-                    "DB_NAME='${env.DB_NAME}'",
-                    "DB_USER='${env.DB_USER}'",
-                    "DB_PASSWORD='${env.DB_PASSWORD}'",
-                    "DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}'",
-                    "DJANGO_DEBUG='${env.DJANGO_DEBUG}'"
-                ]) {
-                    sh 'docker-compose up -d'
+                withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
+                    script {
+                        // Pass environment variables directly to docker-compose up using --env
+                        sh """
+                        DJANGO_SECRET_KEY='${DJANGO_SECRET_KEY_VAR}' \\
+                        DB_NAME='${env.DB_NAME}' \\
+                        DB_USER='${env.DB_USER}' \\
+                        DB_PASSWORD='${env.DB_PASSWORD}' \\
+                        DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}' \\
+                        DJANGO_DEBUG='${env.DJANGO_DEBUG}' \\
+                        docker-compose up -d
+                        """
+                    }
                 }
 
                 echo 'Waiting for database and web services to be healthy...'
                 sleep 10
 
                 echo 'Running Django migrations...'
-                withEnv([
-                    // Pass environment variables with single quotes for exec commands too
-                    "DJANGO_SECRET_KEY='${env.DJANGO_SECRET_KEY}'",
-                    "DB_NAME='${env.DB_NAME}'",
-                    "DB_USER='${env.DB_USER}'",
-                    "DB_PASSWORD='${env.DB_PASSWORD}'",
-                    "DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}'",
-                    "DJANGO_DEBUG='${env.DJANGO_DEBUG}'"
-                ]) {
-                    sh 'docker-compose exec web /usr/local/bin/python manage.py migrate --noinput'
+                withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
+                    script {
+                        // Pass environment variables directly to docker-compose exec
+                        sh """
+                        DJANGO_SECRET_KEY='${DJANGO_SECRET_KEY_VAR}' \\
+                        DB_NAME='${env.DB_NAME}' \\
+                        DB_USER='${env.DB_USER}' \\
+                        DB_PASSWORD='${env.DB_PASSWORD}' \\
+                        DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}' \\
+                        DJANGO_DEBUG='${env.DJANGO_DEBUG}' \\
+                        docker-compose exec web /usr/local/bin/python manage.py migrate --noinput
+                        """
+                    }
                 }
 
-
                 echo 'Collecting static files...'
-                withEnv([
-                    // Pass environment variables with single quotes for exec commands too
-                    "DJANGO_SECRET_KEY='${env.DJANGO_SECRET_KEY}'",
-                    "DB_NAME='${env.DB_NAME}'",
-                    "DB_USER='${env.DB_USER}'",
-                    "DB_PASSWORD='${env.DB_PASSWORD}'",
-                    "DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}'",
-                    "DJANGO_DEBUG='${env.DJANGO_DEBUG}'"
-                ]) {
-                    sh 'docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput'
+                withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
+                    script {
+                        // Pass environment variables directly to docker-compose exec
+                        sh """
+                        DJANGO_SECRET_KEY='${DJANGO_SECRET_KEY_VAR}' \\
+                        DB_NAME='${env.DB_NAME}' \\
+                        DB_USER='${env.DB_USER}' \\
+                        DB_PASSWORD='${env.DB_PASSWORD}' \\
+                        DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}' \\
+                        DJANGO_DEBUG='${env.DJANGO_DEBUG}' \\
+                        docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput
+                        """
+                    }
                 }
 
                 echo 'Application deployed and migrations applied!'
