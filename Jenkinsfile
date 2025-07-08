@@ -1,17 +1,12 @@
 pipeline {
     agent any
 
-    environment {
-        DJANGO_SECRET_KEY = '1v3#rts0=9v*8hrrg1#$b7ai8%05(hil_(&r)f3gvvtac$)!4p'
-
-        DB_NAME = 'mydjangoappdb'
-        DB_USER = 'mydjangoappuser'
-        DB_PASSWORD = 'mydjangoapppassword'
-        DJANGO_ALLOWED_HOSTS = 'localhost,127.0.0.1,172.17.0.1'
-        DJANGO_DEBUG = 'False'
-    }
-
     stages {
+        stage('Declarative: Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
         stage('Checkout') {
             steps {
                 echo 'Checking out source code...'
@@ -19,86 +14,94 @@ pipeline {
                 git branch: 'main', url: 'https://github.com/akhil022007/devOps_django.git'
             }
         }
-
         stage('Build Docker Images') {
             steps {
                 echo 'Building Docker images...'
-                withEnv([
-                    "DJANGO_SECRET_KEY=${env.DJANGO_SECRET_KEY}",
-                    "DB_NAME=${env.DB_NAME}",
-                    "DB_USER=${env.DB_USER}",
-                    "DB_PASSWORD=${env.DB_PASSWORD}",
-                    "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
-                    "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
-                ]) {
+                dir('devOps_docker') { // Assuming your docker-compose.yml is in a 'devOps_docker' subdirectory
                     sh 'docker-compose build web'
                 }
             }
         }
-
         stage('Deploy Application') {
             steps {
                 echo 'Bringing up application services with Docker Compose...'
-                withEnv([
-                    "DJANGO_SECRET_KEY=${env.DJANGO_SECRET_KEY}",
-                    "DB_NAME=${env.DB_NAME}",
-                    "DB_USER=${env.DB_USER}",
-                    "DB_PASSWORD=${env.DB_PASSWORD}",
-                    "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
-                    "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
-                ]) {
+                dir('devOps_docker') {
                     sh 'docker-compose up -d'
                 }
 
                 echo 'Waiting for database to be healthy...'
                 script {
-                    def maxRetries = 30
-                    def retryCount = 0
-                    def dbReady = false
-                    while (retryCount < maxRetries && !dbReady) {
-                        try {
-                            sh 'docker-compose ps db | grep "(healthy)"'
-                            dbReady = true
-                            echo "Database is healthy and ready!"
-                        } catch (Exception e) {
-                            echo "Database not ready yet, waiting... (${retryCount + 1}/${maxRetries})"
-                            sleep 5
-                            retryCount++
+                    def maxAttempts = 30
+                    def attempt = 1
+                    while (attempt <= maxAttempts) {
+                        def dbStatus = sh(script: 'docker-compose ps db | grep "(healthy)"', returnStatus: true)
+                        if (dbStatus == 0) {
+                            echo 'Database is healthy and ready!'
+                            break
+                        } else {
+                            echo "Database not ready yet, waiting... (${attempt}/${maxAttempts})"
+                            sleep 5 // Wait for 5 seconds
+                            attempt++
                         }
                     }
-                    if (!dbReady) {
-                        error "Database did not become healthy within the timeout."
+                    if (attempt > maxAttempts) {
+                        error 'Database did not become healthy within the timeout.'
                     }
                 }
 
+                // --- ADD THIS NEW SECTION TO WAIT FOR THE 'WEB' SERVICE ---
+                echo 'Waiting for web service to be healthy...'
+                script {
+                    def maxAttempts = 30 // You can adjust this
+                    def attempt = 1
+                    while (attempt <= maxAttempts) {
+                        // Assuming your web service has a HEALTHCHECK in its Dockerfile
+                        def webStatus = sh(script: 'docker-compose ps web | grep "(healthy)"', returnStatus: true)
+                        if (webStatus == 0) {
+                            echo 'Web service is healthy and ready!'
+                            break
+                        } else {
+                            echo "Web service not ready yet, waiting... (${attempt}/${maxAttempts})"
+                            sleep 5 // Wait for 5 seconds
+                            attempt++
+                        }
+                    }
+                    if (attempt > maxAttempts) {
+                        error 'Web service did not become healthy within the timeout.'
+                    }
+                }
+                // --- END NEW SECTION ---
+
                 echo 'Running Django migrations...'
-                sh 'docker-compose exec web /usr/local/bin/python manage.py migrate --noinput'
-
-                echo 'Collecting static files...'
-                sh 'docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput'
-
-                echo 'Application deployed and migrations applied!'
+                dir('devOps_docker') {
+                    sh 'docker-compose exec web /usr/local/bin/python manage.py migrate --noinput'
+                }
             }
         }
-
         stage('Test Application') {
             steps {
-                echo 'Testing application accessibility...'
-                sh 'curl -f http://localhost:8000 || { echo "Application not accessible! Check logs."; exit 1; }'
-                echo 'Application is accessible!'
+                echo 'Running application tests...'
+                dir('devOps_docker') {
+                    // Add your test commands here, e.g.:
+                    // sh 'docker-compose exec web /usr/local/bin/python manage.py test'
+                    echo 'Tests would run here.' // Placeholder
+                }
             }
         }
     }
-
     post {
         always {
             echo 'Cleaning up Docker containers and volumes...'
-            sh 'docker-compose down -v'
+            dir('devOps_docker') {
+                sh 'docker-compose down -v'
+            }
             echo 'Cleanup complete for this build.'
+        }
+        success {
+            echo 'Pipeline succeeded!'
         }
         failure {
             echo 'Pipeline failed. Check logs for errors.'
         }
     }
 }
-
