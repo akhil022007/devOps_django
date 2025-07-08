@@ -2,7 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DJANGO_SECRET_KEY = '''06yh*@j4d$0-*a$44g*h#1@3@q_3458*q$lxmymts3qn*wia$$'''
+        // This is your actual, securely generated Django SECRET_KEY.
+        // The triple quotes ensure Groovy handles it correctly.
+        DJANGO_SECRET_KEY = '''1v3#rts0=9v*8hrrg1#$b7ai8%05(hil_(&r)f3gvvtac$)!4p'''
         DB_NAME = 'mydjangoappdb'
         DB_USER = 'mydjangoappuser'
         DB_PASSWORD = 'mydjangoapppassword'
@@ -23,12 +25,13 @@ pipeline {
             steps {
                 echo 'Building Docker images...'
                 withEnv([
-                    "DJANGO_SECRET_KEY=${env.DJANGO_SECRET_KEY}",
-                    "DB_NAME=${env.DB_NAME}",
-                    "DB_USER=${env.DB_USER}",
-                    "DB_PASSWORD=${env.DB_PASSWORD}",
-                    "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
-                    "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
+                    // Pass environment variables with single quotes to prevent shell interpretation of special characters
+                    "DJANGO_SECRET_KEY='${env.DJANGO_SECRET_KEY}'",
+                    "DB_NAME='${env.DB_NAME}'",
+                    "DB_USER='${env.DB_USER}'",
+                    "DB_PASSWORD='${env.DB_PASSWORD}'",
+                    "DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}'",
+                    "DJANGO_DEBUG='${env.DJANGO_DEBUG}'"
                 ]) {
                     sh 'docker-compose build web'
                 }
@@ -39,12 +42,13 @@ pipeline {
             steps {
                 echo 'Bringing up application services with Docker Compose...'
                 withEnv([
-                    "DJANGO_SECRET_KEY=${env.DJANGO_SECRET_KEY}",
-                    "DB_NAME=${env.DB_NAME}",
-                    "DB_USER=${env.DB_USER}",
-                    "DB_PASSWORD=${env.DB_PASSWORD}",
-                    "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
-                    "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
+                    // Pass environment variables with single quotes to prevent shell interpretation of special characters
+                    "DJANGO_SECRET_KEY='${env.DJANGO_SECRET_KEY}'",
+                    "DB_NAME='${env.DB_NAME}'",
+                    "DB_USER='${env.DB_USER}'",
+                    "DB_PASSWORD='${env.DB_PASSWORD}'",
+                    "DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}'",
+                    "DJANGO_DEBUG='${env.DJANGO_DEBUG}'"
                 ]) {
                     sh 'docker-compose up -d'
                 }
@@ -53,10 +57,31 @@ pipeline {
                 sleep 10
 
                 echo 'Running Django migrations...'
-                sh 'docker-compose exec web /usr/local/bin/python manage.py migrate --noinput'
+                withEnv([
+                    // Pass environment variables with single quotes for exec commands too
+                    "DJANGO_SECRET_KEY='${env.DJANGO_SECRET_KEY}'",
+                    "DB_NAME='${env.DB_NAME}'",
+                    "DB_USER='${env.DB_USER}'",
+                    "DB_PASSWORD='${env.DB_PASSWORD}'",
+                    "DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}'",
+                    "DJANGO_DEBUG='${env.DJANGO_DEBUG}'"
+                ]) {
+                    sh 'docker-compose exec web /usr/local/bin/python manage.py migrate --noinput'
+                }
+
 
                 echo 'Collecting static files...'
-                sh 'docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput'
+                withEnv([
+                    // Pass environment variables with single quotes for exec commands too
+                    "DJANGO_SECRET_KEY='${env.DJANGO_SECRET_KEY}'",
+                    "DB_NAME='${env.DB_NAME}'",
+                    "DB_USER='${env.DB_USER}'",
+                    "DB_PASSWORD='${env.DB_PASSWORD}'",
+                    "DJANGO_ALLOWED_HOSTS='${env.DJANGO_ALLOWED_HOSTS}'",
+                    "DJANGO_DEBUG='${env.DJANGO_DEBUG}'"
+                ]) {
+                    sh 'docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput'
+                }
 
                 echo 'Application deployed and migrations applied!'
             }
@@ -82,4 +107,3 @@ pipeline {
         }
     }
 }
-
