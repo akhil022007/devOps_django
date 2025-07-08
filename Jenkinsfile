@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DJANGO_SECRET_KEY = '06yh*@j4d$0-*a$44g*h#1@3@q_3458*q$lxmymts3qn*wia$$'
+        DJANGO_SECRET_KEY = '''06yh*@j4d$0-*a$44g*h#1@3@q_3458*q$lxmymts3qn*wia$$'''
         DB_NAME = 'mydjangoappdb'
         DB_USER = 'mydjangoappuser'
         DB_PASSWORD = 'mydjangoapppassword'
