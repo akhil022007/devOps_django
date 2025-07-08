@@ -2,9 +2,8 @@ pipeline {
     agent any
 
     environment {
-        // These variables are defined at the pipeline level.
-        // DJANGO_SECRET_KEY_PLACEHOLDER is just a semantic placeholder here;
-        // its actual value is injected by 'withCredentials' later.
+        // This variable is a placeholder. The actual DJANGO_SECRET_KEY value
+        // will be injected securely from the Jenkins Secret Text Credential.
         DJANGO_SECRET_KEY_PLACEHOLDER = 'PLACEHOLDER_FOR_JENKINS_CREDENTIAL_VALUE'
 
         DB_NAME = 'mydjangoappdb'
@@ -37,11 +36,9 @@ pipeline {
                         "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
                         "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
                     ]) {
-                        // The 'sh' step will now execute in an environment where these variables are set.
-                        // We still use 'export' within the shell script to ensure they are available
-                        // to docker-compose and its sub-processes, correctly quoted.
+                        // CRITICAL FIX: Use single quotes for DJANGO_SECRET_KEY to prevent shell interpretation
                         sh """
-                        export DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}"
+                        export DJANGO_SECRET_KEY='${DJANGO_SECRET_KEY}'
                         export DB_NAME="${DB_NAME}"
                         export DB_USER="${DB_USER}"
                         export DB_PASSWORD="${DB_PASSWORD}"
@@ -66,8 +63,9 @@ pipeline {
                         "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
                         "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
                     ]) {
+                        // CRITICAL FIX: Use single quotes for DJANGO_SECRET_KEY
                         sh """
-                        export DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}"
+                        export DJANGO_SECRET_KEY='${DJANGO_SECRET_KEY}'
                         export DB_NAME="${DB_NAME}"
                         export DB_USER="${DB_USER}"
                         export DB_PASSWORD="${DB_PASSWORD}"
@@ -93,8 +91,9 @@ pipeline {
                         "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
                         "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
                     ]) {
+                        // CRITICAL FIX: Use single quotes for DJANGO_SECRET_KEY
                         sh """
-                        export DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}"
+                        export DJANGO_SECRET_KEY='${DJANGO_SECRET_KEY}'
                         export DB_NAME="${DB_NAME}"
                         export DB_USER="${DB_USER}"
                         export DB_PASSWORD="${DB_PASSWORD}"
@@ -119,8 +118,9 @@ pipeline {
                         "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
                         "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
                     ]) {
+                        // CRITICAL FIX: Use single quotes for DJANGO_SECRET_KEY
                         sh """
-                        export DJANGO_SECRET_KEY="${DJANGO_SECRET_KEY}"
+                        export DJANGO_SECRET_KEY='${DJANGO_SECRET_KEY}'
                         export DB_NAME="${DB_NAME}"
                         export DB_USER="${DB_USER}"
                         export DB_PASSWORD="${DB_PASSWORD}"
