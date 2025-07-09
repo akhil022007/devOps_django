@@ -39,9 +39,9 @@ pipeline {
                         "DJANGO_ALLOWED_HOSTS_ENV=${env.DJANGO_ALLOWED_HOSTS}",
                         "DJANGO_DEBUG_ENV=${env.DJANGO_DEBUG}"
                     ]) {
-                        // Use printf %q to safely quote the environment variables for the shell.
-                        // This handles all special characters.
-                        sh """
+                        // Use triple single quotes (''') for the sh block to prevent Groovy interpolation
+                        // This ensures printf %q output is passed literally to the shell.
+                        sh '''
                         export DJANGO_SECRET_KEY=$(printf %q "${DJANGO_SECRET_KEY_ENV}")
                         export DB_NAME=$(printf %q "${DB_NAME_ENV}")
                         export DB_USER=$(printf %q "${DB_USER_ENV}")
@@ -49,7 +49,7 @@ pipeline {
                         export DJANGO_ALLOWED_HOSTS=$(printf %q "${DJANGO_ALLOWED_HOSTS_ENV}")
                         export DJANGO_DEBUG=$(printf %q "${DJANGO_DEBUG_ENV}")
                         docker-compose build web
-                        """
+                        '''
                     }
                 }
             }
@@ -68,7 +68,7 @@ pipeline {
                             "DJANGO_ALLOWED_HOSTS_ENV=${env.DJANGO_ALLOWED_HOSTS}",
                             "DJANGO_DEBUG_ENV=${env.DJANGO_DEBUG}"
                         ]) {
-                            sh """
+                            sh '''
                             export DJANGO_SECRET_KEY=$(printf %q "${DJANGO_SECRET_KEY_ENV}")
                             export DB_NAME=$(printf %q "${DB_NAME_ENV}")
                             export DB_USER=$(printf %q "${DB_USER_ENV}")
@@ -76,7 +76,7 @@ pipeline {
                             export DJANGO_ALLOWED_HOSTS=$(printf %q "${DJANGO_ALLOWED_HOSTS_ENV}")
                             export DJANGO_DEBUG=$(printf %q "${DJANGO_DEBUG_ENV}")
                             docker-compose up -d
-                            """
+                            '''
                         }
                     }
                 }
@@ -97,7 +97,7 @@ pipeline {
                             "DJANGO_ALLOWED_HOSTS_ENV=${env.DJANGO_ALLOWED_HOSTS}",
                             "DJANGO_DEBUG_ENV=${env.DJANGO_DEBUG}"
                         ]) {
-                            sh """
+                            sh '''
                             export DJANGO_SECRET_KEY=$(printf %q "${DJANGO_SECRET_KEY_ENV}")
                             export DB_NAME=$(printf %q "${DB_NAME_ENV}")
                             export DB_USER=$(printf %q "${DB_USER_ENV}")
@@ -107,7 +107,7 @@ pipeline {
                             export DJANGO_ALLOWED_HOSTS=$(printf %q "${DJANGO_ALLOWED_HOSTS_ENV}")
                             export DJANGO_DEBUG=$(printf %q "${DJANGO_DEBUG_ENV}")
                             docker-compose exec web /usr/local/bin/python manage.py migrate --noinput
-                            """
+                            '''
                         }
                     }
                 }
@@ -125,7 +125,7 @@ pipeline {
                             "DJANGO_ALLOWED_HOSTS_ENV=${env.DJANGO_ALLOWED_HOSTS}",
                             "DJANGO_DEBUG_ENV=${env.DJANGO_DEBUG}"
                         ]) {
-                            sh """
+                            sh '''
                             export DJANGO_SECRET_KEY=$(printf %q "${DJANGO_SECRET_KEY_ENV}")
                             export DB_NAME=$(printf %q "${DB_NAME_ENV}")
                             export DB_USER=$(printf %q "${DB_USER_ENV}")
@@ -135,7 +135,7 @@ pipeline {
                             export DJANGO_ALLOWED_HOSTS=$(printf %q "${DJANGO_ALLOWED_HOSTS_ENV}")
                             export DJANGO_DEBUG=$(printf %q "${DJANGO_DEBUG_ENV}")
                             docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput
-                            """
+                            '''
                         }
                     }
                 }
