@@ -1,4 +1,4 @@
-import java.util.Base64
+// No Base64 import needed for this approach
 
 pipeline {
     agent any
@@ -29,27 +29,27 @@ pipeline {
                 echo 'Building Docker images...'
                 // Use withCredentials to securely inject the SECRET_KEY from Jenkins Credentials
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
-                    // Encode the secret key to Base64 before passing it to the shell
-                    script {
-                        def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
-                        withEnv([
-                            "DJANGO_SECRET_KEY_B64=${encodedSecretKey}", // Pass the Base64 encoded key
-                            "DB_NAME=${env.DB_NAME}",
-                            "DB_USER=${env.DB_USER}",
-                            "DB_PASSWORD=${env.DB_PASSWORD}",
-                            "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
-                            "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
-                        ]) {
-                            sh """
-                            export DJANGO_SECRET_KEY_B64="${DJANGO_SECRET_KEY_B64}"
-                            export DB_NAME="${DB_NAME}"
-                            export DB_USER="${DB_USER}"
-                            export DB_PASSWORD="${DB_PASSWORD}"
-                            export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
-                            export DJANGO_DEBUG="${DJANGO_DEBUG}"
-                            docker-compose build web
-                            """
-                        }
+                    // Set environment variables for the current shell context using withEnv.
+                    // Then, within the sh command, use printf %q to robustly quote the values.
+                    withEnv([
+                        "DJANGO_SECRET_KEY_ENV=${DJANGO_SECRET_KEY_VAR}", // Pass the credential value to a new env var
+                        "DB_NAME_ENV=${env.DB_NAME}",
+                        "DB_USER_ENV=${env.DB_USER}",
+                        "DB_PASSWORD_ENV=${env.DB_PASSWORD}",
+                        "DJANGO_ALLOWED_HOSTS_ENV=${env.DJANGO_ALLOWED_HOSTS}",
+                        "DJANGO_DEBUG_ENV=${env.DJANGO_DEBUG}"
+                    ]) {
+                        // Use printf %q to safely quote the environment variables for the shell.
+                        // This handles all special characters.
+                        sh """
+                        export DJANGO_SECRET_KEY=$(printf %q "${DJANGO_SECRET_KEY_ENV}")
+                        export DB_NAME=$(printf %q "${DB_NAME_ENV}")
+                        export DB_USER=$(printf %q "${DB_USER_ENV}")
+                        export DB_PASSWORD=$(printf %q "${DB_PASSWORD_ENV}")
+                        export DJANGO_ALLOWED_HOSTS=$(printf %q "${DJANGO_ALLOWED_HOSTS_ENV}")
+                        export DJANGO_DEBUG=$(printf %q "${DJANGO_DEBUG_ENV}")
+                        docker-compose build web
+                        """
                     }
                 }
             }
@@ -60,22 +60,21 @@ pipeline {
                 echo 'Bringing up application services with Docker Compose...'
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
                     script {
-                        def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
                         withEnv([
-                            "DJANGO_SECRET_KEY_B64=${encodedSecretKey}",
-                            "DB_NAME=${env.DB_NAME}",
-                            "DB_USER=${env.DB_USER}",
-                            "DB_PASSWORD=${env.DB_PASSWORD}",
-                            "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
-                            "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
+                            "DJANGO_SECRET_KEY_ENV=${DJANGO_SECRET_KEY_VAR}",
+                            "DB_NAME_ENV=${env.DB_NAME}",
+                            "DB_USER_ENV=${env.DB_USER}",
+                            "DB_PASSWORD_ENV=${env.DB_PASSWORD}",
+                            "DJANGO_ALLOWED_HOSTS_ENV=${env.DJANGO_ALLOWED_HOSTS}",
+                            "DJANGO_DEBUG_ENV=${env.DJANGO_DEBUG}"
                         ]) {
                             sh """
-                            export DJANGO_SECRET_KEY_B64="${DJANGO_SECRET_KEY_B64}"
-                            export DB_NAME="${DB_NAME}"
-                            export DB_USER="${DB_USER}"
-                            export DB_PASSWORD="${DB_PASSWORD}"
-                            export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
-                            export DJANGO_DEBUG="${DJANGO_DEBUG}"
+                            export DJANGO_SECRET_KEY=$(printf %q "${DJANGO_SECRET_KEY_ENV}")
+                            export DB_NAME=$(printf %q "${DB_NAME_ENV}")
+                            export DB_USER=$(printf %q "${DB_USER_ENV}")
+                            export DB_PASSWORD=$(printf %q "${DB_PASSWORD_ENV}")
+                            export DJANGO_ALLOWED_HOSTS=$(printf %q "${DJANGO_ALLOWED_HOSTS_ENV}")
+                            export DJANGO_DEBUG=$(printf %q "${DJANGO_DEBUG_ENV}")
                             docker-compose up -d
                             """
                         }
@@ -88,26 +87,25 @@ pipeline {
                 echo 'Running Django migrations...'
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
                     script {
-                        def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
                         withEnv([
-                            "DJANGO_SECRET_KEY_B64=${encodedSecretKey}",
-                            "DB_NAME=${env.DB_NAME}",
-                            "DB_USER=${env.DB_USER}",
-                            "DB_PASSWORD=${env.DB_PASSWORD}",
-                            "DB_HOST=db",
-                            "DB_PORT=5432",
-                            "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
-                            "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
+                            "DJANGO_SECRET_KEY_ENV=${DJANGO_SECRET_KEY_VAR}",
+                            "DB_NAME_ENV=${env.DB_NAME}",
+                            "DB_USER_ENV=${env.DB_USER}",
+                            "DB_PASSWORD_ENV=${env.DB_PASSWORD}",
+                            "DB_HOST_ENV=db",
+                            "DB_PORT_ENV=5432",
+                            "DJANGO_ALLOWED_HOSTS_ENV=${env.DJANGO_ALLOWED_HOSTS}",
+                            "DJANGO_DEBUG_ENV=${env.DJANGO_DEBUG}"
                         ]) {
                             sh """
-                            export DJANGO_SECRET_KEY_B64="${DJANGO_SECRET_KEY_B64}"
-                            export DB_NAME="${DB_NAME}"
-                            export DB_USER="${DB_USER}"
-                            export DB_PASSWORD="${DB_PASSWORD}"
-                            export DB_HOST="${DB_HOST}"
-                            export DB_PORT="${DB_PORT}"
-                            export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
-                            export DJANGO_DEBUG="${DJANGO_DEBUG}"
+                            export DJANGO_SECRET_KEY=$(printf %q "${DJANGO_SECRET_KEY_ENV}")
+                            export DB_NAME=$(printf %q "${DB_NAME_ENV}")
+                            export DB_USER=$(printf %q "${DB_USER_ENV}")
+                            export DB_PASSWORD=$(printf %q "${DB_PASSWORD_ENV}")
+                            export DB_HOST=$(printf %q "${DB_HOST_ENV}")
+                            export DB_PORT=$(printf %q "${DB_PORT_ENV}")
+                            export DJANGO_ALLOWED_HOSTS=$(printf %q "${DJANGO_ALLOWED_HOSTS_ENV}")
+                            export DJANGO_DEBUG=$(printf %q "${DJANGO_DEBUG_ENV}")
                             docker-compose exec web /usr/local/bin/python manage.py migrate --noinput
                             """
                         }
@@ -117,26 +115,25 @@ pipeline {
                 echo 'Collecting static files...'
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
                     script {
-                        def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
                         withEnv([
-                            "DJANGO_SECRET_KEY_B64=${encodedSecretKey}",
-                            "DB_NAME=${env.DB_NAME}",
-                            "DB_USER=${env.DB_USER}",
-                            "DB_PASSWORD=${env.DB_PASSWORD}",
-                            "DB_HOST=db",
-                            "DB_PORT=5432",
-                            "DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}",
-                            "DJANGO_DEBUG=${env.DJANGO_DEBUG}"
+                            "DJANGO_SECRET_KEY_ENV=${DJANGO_SECRET_KEY_VAR}",
+                            "DB_NAME_ENV=${env.DB_NAME}",
+                            "DB_USER_ENV=${env.DB_USER}",
+                            "DB_PASSWORD_ENV=${env.DB_PASSWORD}",
+                            "DB_HOST_ENV=db",
+                            "DB_PORT_ENV=5432",
+                            "DJANGO_ALLOWED_HOSTS_ENV=${env.DJANGO_ALLOWED_HOSTS}",
+                            "DJANGO_DEBUG_ENV=${env.DJANGO_DEBUG}"
                         ]) {
                             sh """
-                            export DJANGO_SECRET_KEY_B64="${DJANGO_SECRET_KEY_B64}"
-                            export DB_NAME="${DB_NAME}"
-                            export DB_USER="${DB_USER}"
-                            export DB_PASSWORD="${DB_PASSWORD}"
-                            export DB_HOST="${DB_HOST}"
-                            export DB_PORT="${DB_PORT}"
-                            export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
-                            export DJANGO_DEBUG="${DJANGO_DEBUG}"
+                            export DJANGO_SECRET_KEY=$(printf %q "${DJANGO_SECRET_KEY_ENV}")
+                            export DB_NAME=$(printf %q "${DB_NAME_ENV}")
+                            export DB_USER=$(printf %q "${DB_USER_ENV}")
+                            export DB_PASSWORD=$(printf %q "${DB_PASSWORD_ENV}")
+                            export DB_HOST=$(printf %q "${DB_HOST_ENV}")
+                            export DB_PORT=$(printf %q "${DB_PORT_ENV}")
+                            export DJANGO_ALLOWED_HOSTS=$(printf %q "${DJANGO_ALLOWED_HOSTS_ENV}")
+                            export DJANGO_DEBUG=$(printf %q "${DJANGO_DEBUG_ENV}")
                             docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput
                             """
                         }

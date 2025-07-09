@@ -1,4 +1,3 @@
-# docker-compose.yml
 version: '3.8'
 
 services:
@@ -24,7 +23,6 @@ services:
     container_name: mydjango_web
     command: >
       sh -c "
-      # Decode the Base64 secret key and export it
       export DJANGO_SECRET_KEY=$(echo ${DJANGO_SECRET_KEY_B64} | base64 -d) &&
       /usr/local/bin/python /app/manage.py wait_for_db &&
       /usr/local/bin/python /app/manage.py migrate --noinput &&
@@ -36,7 +34,6 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # We now pass the Base64 encoded key to the container
       DJANGO_SECRET_KEY_B64: ${DJANGO_SECRET_KEY_B64}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
       DB_NAME: ${DB_NAME:-mydjangoappdb}
