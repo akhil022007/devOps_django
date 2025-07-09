@@ -28,14 +28,9 @@ pipeline {
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
                     script {
                         def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
+                        // Removed -e flags from build command as it's not supported
                         sh """
-                        docker-compose build web \\
-                        -e DJANGO_SECRET_KEY_B64="${encodedSecretKey}" \\
-                        -e DB_NAME="${env.DB_NAME}" \\
-                        -e DB_USER="${DB_USER}" \\
-                        -e DB_PASSWORD="${DB_PASSWORD}" \\
-                        -e DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}" \\
-                        -e DJANGO_DEBUG="${DJANGO_DEBUG}"
+                        docker-compose build web
                         """
                     }
                 }
@@ -48,6 +43,7 @@ pipeline {
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
                     script {
                         def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
+                        // Keep -e flags for up command
                         sh """
                         docker-compose up -d \\
                         -e DJANGO_SECRET_KEY_B64="${encodedSecretKey}" \\
@@ -67,6 +63,7 @@ pipeline {
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
                     script {
                         def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
+                        // Keep -e flags for exec command
                         sh """
                         docker-compose exec web /usr/local/bin/python manage.py migrate --noinput \\
                         -e DJANGO_SECRET_KEY_B64="${encodedSecretKey}" \\
@@ -85,6 +82,7 @@ pipeline {
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
                     script {
                         def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
+                        // Keep -e flags for exec command
                         sh """
                         docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput \\
                         -e DJANGO_SECRET_KEY_B64="${encodedSecretKey}" \\
