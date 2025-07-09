@@ -19,37 +19,40 @@ services:
       retries: 5
 
   web:
-    build: .
+    build: . # Build the image from the Dockerfile in the current directory
     container_name: mydjango_web
     command: >
       sh -c "
-      /usr/local/bin/python /app/manage.py wait_for_db &&
-      /usr/local/bin/python /app/manage.py migrate --noinput &&
-      /usr/local/bin/python /app/manage.py collectstatic --noinput &&
-      /usr/local/bin/python /app/manage.py runserver 0.0.0.0:8000
+      /usr/local/bin/python /app/manage.py wait_for_db && # Custom command to wait for DB
+      /usr/local/bin/python /app/manage.py migrate --noinput && # Apply Django migrations
+      /usr/local/bin/python /app/manage.py collectstatic --noinput && # Collect static files
+      /usr/local/bin/python /app/manage.py runserver 0.0.0.0:8000 # Start Django development server
       "
     volumes:
+      # Mount the current project directory into the container
       - .:/app
     ports:
-      - "8000:8000"
+      - "8000:8000" # Map host port 8000 to container port 8000
     environment:
-      # These variables are expected to be passed via '-e' flags from Jenkins
-      DJANGO_SECRET_KEY_B64:
-      DJANGO_ALLOWED_HOSTS:
-      DB_NAME:
-      DB_USER:
-      DB_PASSWORD:
-      DB_HOST: db # This can remain hardcoded if it's always 'db'
-      DB_PORT: 5432 # This can remain hardcoded if it's always '5432'
-      DJANGO_DEBUG:
+      # These environment variables are passed from Jenkins
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY} # Expecting the plain secret key
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DB_NAME: ${DB_NAME:-mydjangoappdb}
+      DB_USER: ${DB_USER:-mydjangoappuser}
+      DB_PASSWORD: ${DB_PASSWORD:-mydjangoapppassword}
+      DB_HOST: db # Service name 'db' is resolvable within the Docker network
+      DB_PORT: ${DB_PORT:-5432}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-True}
     depends_on:
       - db
     healthcheck:
+      # Checks if the Django web application is responding to HTTP requests
       test: ["CMD", "curl", "-f", "http://localhost:8000"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 20s # Give the Django app time to start before checks begin
 
+# Define named volumes for data persistence
 volumes:
   db_data:
