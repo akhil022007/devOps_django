@@ -1,52 +1,41 @@
-import java.util.Base64 // Import Base64 utility for encoding the secret key
+import java.util.Base64
 
 pipeline {
-    agent any // Run the pipeline on any available agent
+    agent any
 
     environment {
-        // Placeholder for the Django Secret Key. Its actual value is
-        // securely injected from Jenkins Credentials using 'withCredentials'.
         DJANGO_SECRET_KEY_PLACEHOLDER = 'PLACEHOLDER_FOR_JENKINS_CREDENTIAL_VALUE'
 
-        // Other environment variables for your application
         DB_NAME = 'mydjangoappdb'
         DB_USER = 'mydjangoappuser'
         DB_PASSWORD = 'mydjangoapppassword'
-        DJANGO_ALLOWED_HOSTS = 'localhost,127.0.0.1' // Update this if your Jenkins server has a different hostname/IP
-        DJANGO_DEBUG = 'False' // Set to True for debugging, False for production
+        DJANGO_ALLOWED_HOSTS = 'localhost,127.0.0.1'
+        DJANGO_DEBUG = 'False'
     }
 
     stages {
         stage('Checkout') {
             steps {
                 echo 'Checking out source code...'
-                cleanWs() // Clean the workspace before checkout
-                git branch: 'main', url: 'https://github.com/akhil022007/devOps_django.git' // Your GitHub repository
+                cleanWs()
+                git branch: 'main', url: 'https://github.com/akhil022007/devOps_django.git'
             }
         }
 
         stage('Build Docker Images') {
             steps {
                 echo 'Building Docker images...'
-                // Securely inject the DJANGO_SECRET_KEY from Jenkins Credentials
-                // The credential ID MUST match the one created in Jenkins
                 withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
                     script {
-                        // Encode the sensitive secret key to Base64 within Groovy
                         def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
-
-                        // Execute docker-compose build.
-                        // CRITICAL FIX: Directly interpolate the Groovy 'encodedSecretKey' variable
-                        // into the shell script using "${encodedSecretKey}".
-                        // This ensures the value is passed correctly, avoiding shell re-interpretation.
                         sh """
-                        export DJANGO_SECRET_KEY_B64="${encodedSecretKey}"
-                        export DB_NAME="${env.DB_NAME}"
-                        export DB_USER="${env.DB_USER}"
-                        export DB_PASSWORD="${DB_PASSWORD}"
-                        export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
-                        export DJANGO_DEBUG="${DJANGO_DEBUG}"
-                        docker-compose build web
+                        docker-compose build web \\
+                        -e DJANGO_SECRET_KEY_B64="${encodedSecretKey}" \\
+                        -e DB_NAME="${env.DB_NAME}" \\
+                        -e DB_USER="${DB_USER}" \\
+                        -e DB_PASSWORD="${DB_PASSWORD}" \\
+                        -e DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}" \\
+                        -e DJANGO_DEBUG="${DJANGO_DEBUG}"
                         """
                     }
                 }
@@ -60,13 +49,13 @@ pipeline {
                     script {
                         def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
                         sh """
-                        export DJANGO_SECRET_KEY_B64="${encodedSecretKey}"
-                        export DB_NAME="${env.DB_NAME}"
-                        export DB_USER="${DB_USER}"
-                        export DB_PASSWORD="${DB_PASSWORD}"
-                        export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
-                        export DJANGO_DEBUG="${DJANGO_DEBUG}"
-                        docker-compose up -d
+                        docker-compose up -d \\
+                        -e DJANGO_SECRET_KEY_B64="${encodedSecretKey}" \\
+                        -e DB_NAME="${env.DB_NAME}" \\
+                        -e DB_USER="${DB_USER}" \\
+                        -e DB_PASSWORD="${DB_PASSWORD}" \\
+                        -e DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}" \\
+                        -e DJANGO_DEBUG="${DJANGO_DEBUG}"
                         """
                     }
                 }
@@ -79,15 +68,15 @@ pipeline {
                     script {
                         def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
                         sh """
-                        export DJANGO_SECRET_KEY_B64="${encodedSecretKey}"
-                        export DB_NAME="${DB_NAME}"
-                        export DB_USER="${DB_USER}"
-                        export DB_PASSWORD="${DB_PASSWORD}"
-                        export DB_HOST="db"
-                        export DB_PORT="5432"
-                        export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
-                        export DJANGO_DEBUG="${DJANGO_DEBUG}"
-                        docker-compose exec web /usr/local/bin/python manage.py migrate --noinput
+                        docker-compose exec web /usr/local/bin/python manage.py migrate --noinput \\
+                        -e DJANGO_SECRET_KEY_B64="${encodedSecretKey}" \\
+                        -e DB_NAME="${DB_NAME}" \\
+                        -e DB_USER="${DB_USER}" \\
+                        -e DB_PASSWORD="${DB_PASSWORD}" \\
+                        -e DB_HOST="db" \\
+                        -e DB_PORT="5432" \\
+                        -e DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}" \\
+                        -e DJANGO_DEBUG="${DJANGO_DEBUG}"
                         """
                     }
                 }
@@ -97,15 +86,15 @@ pipeline {
                     script {
                         def encodedSecretKey = Base64.encoder.encodeToString(DJANGO_SECRET_KEY_VAR.getBytes("UTF-8"))
                         sh """
-                        export DJANGO_SECRET_KEY_B64="${encodedSecretKey}"
-                        export DB_NAME="${DB_NAME}"
-                        export DB_USER="${DB_USER}"
-                        export DB_PASSWORD="${DB_PASSWORD}"
-                        export DB_HOST="db"
-                        export DB_PORT="5432"
-                        export DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}"
-                        export DJANGO_DEBUG="${DJANGO_DEBUG}"
-                        docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput
+                        docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput \\
+                        -e DJANGO_SECRET_KEY_B64="${encodedSecretKey}" \\
+                        -e DB_NAME="${DB_NAME}" \\
+                        -e DB_USER="${DB_USER}" \\
+                        -e DB_PASSWORD="${DB_PASSWORD}" \\
+                        -e DB_HOST="db" \\
+                        -e DB_PORT="5432" \\
+                        -e DJANGO_ALLOWED_HOSTS="${DJANGO_ALLOWED_HOSTS}" \\
+                        -e DJANGO_DEBUG="${DJANGO_DEBUG}"
                         """
                     }
                 }
