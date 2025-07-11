@@ -1,20 +1,20 @@
-FROM python:3.12-slim-bookworm
+        FROM python:3.12-slim-bookworm
 
-WORKDIR /app
+        WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    postgresql-client \
-    gcc \
-    libpq-dev \
-    coreutils \
-    && rm -rf /var/lib/apt/lists/*
+        RUN apt-get update && apt-get install -y --no-install-recommends \
+            postgresql-client \
+            gcc \
+            libpq-dev \
+            && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /app/
+        COPY requirements.txt /app/
 
-RUN pip install --no-cache-dir -r requirements.txt
+        RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /app/
+        COPY . /app/
 
-EXPOSE 8000
+        EXPOSE 8000
 
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+        CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+        
