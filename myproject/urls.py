@@ -1,8 +1,7 @@
-cat > urls.py
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', include('myapp.urls')),
 ]
-# Press Ctrl+D (or Ctrl+Z then Enter on Windows) here
