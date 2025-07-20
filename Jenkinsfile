@@ -40,6 +40,7 @@ pipeline {
 
                         sh "docker-compose build web"
 
+                        // Remove the .env file immediately after build, as it's not needed for subsequent steps in this stage.
                         sh "rm ${envFilePath}"
                     }
                 }
@@ -63,52 +64,29 @@ pipeline {
                         DB_PORT=5432
                         """)
                         sh "docker-compose up -d"
-                        sh "rm ${envFilePath}"
-                    }
-                }
 
-                echo 'Waiting for database and web services to be healthy...'
-                sleep 10
+                        echo 'Waiting for database and web services to be healthy...'
+                        sleep 10
 
-                echo 'Running Django migrations...'
-                withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
-                    script {
-                        def envFilePath = "${pwd()}/.env"
-                        writeFile(file: envFilePath, text: """
-                        DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY_VAR}
-                        DB_NAME=${env.DB_NAME}
-                        DB_USER=${env.DB_USER}
-                        DB_PASSWORD=${env.DB_PASSWORD}
-                        DB_HOST=db
-                        DB_PORT=5432
-                        DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}
-                        DJANGO_DEBUG=${env.DJANGO_DEBUG}
-                        """)
+                        // --- CRITICAL: Capture logs and container status for debugging ---
+                        echo 'Capturing web service logs for debugging...'
+                        sh "docker-compose logs web"
+                        echo 'Capturing container status for debugging (should show exited containers)...'
+                        sh "docker-compose ps -a"
+                        // --- END CRITICAL ---
+
+                        echo 'Running Django migrations...'
+                        // The .env file is still present here for docker-compose to implicitly pick up
                         sh "docker-compose exec web /usr/local/bin/python manage.py migrate --noinput"
-                        sh "rm ${envFilePath}"
-                    }
-                }
 
-                echo 'Collecting static files...'
-                withCredentials([string(credentialsId: 'DJANGO_SECRET_KEY_CREDENTIAL', variable: 'DJANGO_SECRET_KEY_VAR')]) {
-                    script {
-                        def envFilePath = "${pwd()}/.env"
-                        writeFile(file: envFilePath, text: """
-                        DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY_VAR}
-                        DB_NAME=${env.DB_NAME}
-                        DB_USER=${env.DB_USER}
-                        DB_PASSWORD=${env.DB_PASSWORD}
-                        DB_HOST=db
-                        DB_PORT=5432
-                        DJANGO_ALLOWED_HOSTS=${env.DJANGO_ALLOWED_HOSTS}
-                        DJANGO_DEBUG=${env.DJANGO_DEBUG}
-                        """)
+                        echo 'Collecting static files...'
                         sh "docker-compose exec web /usr/local/bin/python manage.py collectstatic --noinput"
+
+                        echo 'Application deployed and migrations applied!'
+                        // Remove the .env file after all commands that might need it
                         sh "rm ${envFilePath}"
                     }
                 }
-
-                echo 'Application deployed and migrations applied!'
             }
         }
 
@@ -124,6 +102,8 @@ pipeline {
     post {
         always {
             echo 'Cleaning up Docker containers and volumes...'
+            // Ensure .env file is removed even if a previous stage failed to remove it
+            sh "rm -f ${pwd()}/.env" // -f to force remove silently if not found
             sh 'docker-compose down -v'
             echo 'Cleanup complete for this build.'
         }
